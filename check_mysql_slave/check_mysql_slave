@@ -1,0 +1,66 @@
+#!/bin/bash
+
+# Alex Florescu, a @ adminfactory.net
+# This check is intended for nagios / nrpe. Available arguments are: seconds, io_running, sql_running
+# For nrpe, edit nrpe.cfg and define like so:
+# command[check_slave_seconds]=/usr/lib/nagios/plugins/check_mysql_slave seconds
+# command[check_slave_io]=/usr/lib/nagios/plugins/check_mysql_slave io_running
+# command[check_slave_running]=/usr/lib/nagios/plugins/check_mysql_slave sql_running
+
+# Customize below
+###
+user=root
+host=127.0.0.1
+port=3306
+pass=`cat /mysql/password/file`
+###
+
+COM=`mysql -u "$user" -h "$host" -P "$port" -p"$pass" -e "show slave status\G"`
+
+if [[ $1 == "seconds" ]]; then
+SEC=`echo "$COM"|grep Seconds_Behind_Master|awk '{print $2}'`
+
+        if [ $SEC -eq 0 ];
+                then echo "OK - Slave is not behind master"
+                exit 0
+
+        # The following elif order is important!
+		# Critical if $SEC greater than 100000 seconds
+        elif [[ $SEC -gt 100000 ]];
+                then echo "CRITICAL - Behind `echo "$SEC"` seconds"
+                exit 2
+
+		# Warn if $SEC greater than 0
+        elif [ $SEC -gt 0 ];
+                then echo "WARNING - Behind `echo "$SEC"` seconds"
+                exit 1
+	else echo "Unknown output: `echo "$SEC"`"
+                exit 2
+        fi
+
+elif [[ $1 == "io_running" ]]; then
+IO=`echo "$COM"|grep Slave_IO_Running|awk '{print $2}'`
+
+        if [ $IO == "Yes" ];
+                then echo "Slave_IO_Running: Yes"
+                exit 0
+        else
+                echo "CRITICAL - Slave_IO_Running: `echo "$IO"`"
+                exit 2
+        fi
+
+elif [[ $1 == "sql_running" ]]; then
+SQL=`echo "$COM"|grep Slave_SQL_Running|awk '{print $2}'`
+
+        if [ $SQL == "Yes" ];
+                then echo "Slave_SQL_Running: Yes"
+                exit 0
+        else
+                echo "CRITICAL - Slave_SQL_Running: `echo "$SQL"`"
+                exit 2
+        fi
+
+ else echo "Permitted args: seconds, io_running, sql_running"
+ exit 2
+
+fi
