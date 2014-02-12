@@ -1,0 +1,33 @@
+#!/bin/bash
+
+# Alex Florescu, a @ adminfactory.net
+# This check is intended for nagios / nrpe. Available arguments are: role, keys
+# For nrpe, edit nrpe.cfg and define like so:
+# command[check_redis_role]=/usr/lib/nagios/plugins/check_redis role
+# command[check_redis_keys]=/usr/lib/nagios/plugins/check_redis keys
+
+# Customize below
+###
+host=127.0.0.1
+port=6379
+pass=`cat /etc/redis/pass`
+###
+
+COM=`echo INFO|redis-cli -h "$host" -p "$port" -a "$pass"`
+
+if [[ $1 == "role" ]]; then
+SEC=`echo "$COM"|grep role|cut -d\: -f 2`
+
+        if [ $? -eq 0 ];
+                then echo "Role: $SEC"
+                exit 0
+        fi
+
+elif [[ $1 == "keys" ]]; then
+IO=`echo info|redis-cli -a \`cat /etc/redis/pass\`|grep db0|cut -d\, -f 1|cut -d\= -f 2`
+
+        if [ $? -eq 0 ];
+                then echo "Keys: $IO"
+                exit 0
+        fi
+fi
