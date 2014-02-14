@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Alex Florescu, a @ adminfactory.net
+# This check is intended for nagios / nrpe. Available arguments are: status, wsrep_connected, wsrep_ready
+# For nrpe, edit nrpe.cfg and define like so:
+# command[check_galera_status]=/usr/lib/nagios/plugins/check_mysql_slave status
+# command[check_galera_wsrep_rdy]=/usr/lib/nagios/plugins/check_mysql_slave wsrep_connected
+# command[check_galera_wsrep_conn]=/usr/lib/nagios/plugins/check_mysql_slave wsrep_ready
+
+# Customize below
+###
+user=root
+host=127.0.0.1
+port=3306
+pass=`cat /etc/mysql.pw`
+###
+
+COM=`mysql -u "$user" -h "$host" -P "$port" -p"$pass" -e "show status like 'wsrep_%'"`
+
+if [[ $1 == "status" ]]; then
+SEC=`echo "$COM"|grep wsrep_local_state_comment|awk '{print $2}'`
+
+        if [[ $SEC == "Synced" ]];
+                then echo "OK - Node status: Synced"
+                exit 0
+
+        # The following elif order is important!
+        elif [[ $SEC =~ "Joiner" ]] && [[ $SEC =~ "Joined" ]] && [[ $SEC =~ "Error" ]];
+                then echo "CRITICAL - Node status: `echo "$SEC"`"
+                exit 2
+
+        elif [[ $SEC =~ "Donor" ]];
+                then echo "WARNING - Node status: `echo "$SEC"`"
+                exit 1
+
+        else echo "Unknown output: `echo "$SEC"`"
+                exit 2
+        fi
+
+elif [[ $1 == "wsrep_connected" ]]; then
+IO=`echo "$COM"|grep wsrep_connected|awk '{print $2}'`
+
+        if [ $IO == "ON" ];
+                then echo "wsrep_connected: Yes"
+                exit 0
+        else
+                echo "CRITICAL - wsrep_connected: `echo "$IO"`"
+                exit 2
+        fi
+
+elif [[ $1 == "wsrep_ready" ]]; then
+SQL=`echo "$COM"|grep wsrep_ready|awk '{print $2}'`
+
+        if [ $SQL == "ON" ];
+                then echo "wsrep_ready: Yes"
+                exit 0
+        else
+                echo "CRITICAL - wsrep_ready: `echo "$SQL"`"
+                exit 2
+        fi
+
+ else echo "Permitted args: status, wsrep_connected, wsrep_ready"
+ exit 2
+
+fi
