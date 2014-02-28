@@ -46,13 +46,15 @@ echo
 ###########
 
 ###########
-echo    key_read
-
 echo `echo "$QCV"|grep key_buffer_size`
 
         KREQ="`mysql $OPTS -e "show global status like '%key_read%';"|grep read_requests|awk {'print $2'}`"
         KR="`mysql $OPTS -e "show global status like '%key_read%';"|grep reads|awk {'print $2'}`"
+        KRU="`mysql $OPTS -e "show global status like '%key_read%';"|grep blocks_used|awk {'print $2'}`"
+        KRF="`mysql $OPTS -e "show global status like '%key_read%';"|grep blocks_unused|awk {'print $2'}`"
 
+echo Key Used Memory: `echo "$KRU * $(echo "$QCV"|grep key_cache_block_size|awk {'print $2'})"|bc`
+echo Key Free Memory: `echo "$KRF * $(echo "$QCV"|grep key_cache_block_size|awk {'print $2'})"|bc`
 echo Key_read_requests $KREQ
 echo Key_reads $KR
 echo key_reads / key_read_requests ratio: `echo "($KREQ / $KR)"|bc`:1
