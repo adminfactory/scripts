@@ -52,11 +52,14 @@ echo `echo "$QCV"|grep key_buffer_size`
         KR="`echo "$QC"|grep Key_reads|awk {'print $2'}`"
         KRU="`echo "$QC"|grep Key_blocks_used|awk {'print $2'}`"
         KRF="`echo "$QC"|grep Key_blocks_unused|awk {'print $2'}`"
+	BS="`echo "$QCV"|grep key_cache_block_size|awk {'print $2'}`"
 
-echo -ne Key Used Memory: `echo "$KRU * $(echo "$QCV"|grep key_cache_block_size|awk {'print $2'})"|bc` \ \ 
-echo Key Free Memory: `echo "$KRF * $(echo "$QCV"|grep key_cache_block_size|awk {'print $2'})"|bc`
+#echo Key Used Memory: `echo "$KRU * $(echo "$QCV"|grep key_cache_block_size|awk {'print $2'})"|bc`
+echo -ne Key Used Memory: `echo "$KRU * $BS"|bc` \ \ 
+echo Key Free Memory: `echo "$KRF * $BS"|bc`
 echo -ne Key_read_requests $KREQ \ 
-echo Key_reads $KR
+echo -ne Key_reads $KR \ 
+echo Key_writes "`echo "$QC"|grep Key_writes|awk {'print $2'}`"
 echo -ne key_reads / key_read_requests ratio: `echo "($KREQ / $KR)"|bc`:1,\ 
 echo efficiency: `echo "(1-$KR / $KREQ) * 100"|bc -l`%
 
