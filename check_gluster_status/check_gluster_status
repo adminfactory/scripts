@@ -1,0 +1,12 @@
+#!/bin/bash
+
+COM=`gluster peer status|grep State|cut -d\( -f2|cut -d\) -f1`
+
+if [[ $COM == "Connected" ]]; then
+        echo OK: $COM
+        exit 0
+
+elif [[ $COM != "Connected" ]]; then
+        echo $COM
+        exit 1
+fi
