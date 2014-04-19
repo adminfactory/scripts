@@ -50,7 +50,7 @@ IO=`echo "$COM"|grep Slave_IO_Running|awk '{print $2}'`
         fi
 
 elif [[ $1 == "sql_running" ]]; then
-SQL=`echo "$COM"|grep Slave_SQL_Running|awk '{print $2}'`
+SQL=`echo "$COM"|grep Slave_SQL_Running:|awk '{print $2}'`
 
         if [ $SQL == "Yes" ];
                 then echo "Slave_SQL_Running: Yes"
