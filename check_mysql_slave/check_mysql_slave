@@ -1,11 +1,12 @@
 #!/bin/bash
 
 # Alex Florescu, a @ adminfactory.net
-# This check is intended for nagios / nrpe. Available arguments are: seconds, io_running, sql_running
+# This check is intended for nagios / nrpe. Available arguments are: seconds, io_running, sql_running, error
 # For nrpe, edit nrpe.cfg and define like so:
 # command[check_slave_seconds]=/usr/lib/nagios/plugins/check_mysql_slave seconds
 # command[check_slave_io]=/usr/lib/nagios/plugins/check_mysql_slave io_running
 # command[check_slave_running]=/usr/lib/nagios/plugins/check_mysql_slave sql_running
+# command[check_slave_error]=/usr/lib/nagios/plugins/check_mysql_slave error
 
 # Customize below
 ###
@@ -60,7 +61,18 @@ SQL=`echo "$COM"|grep Slave_SQL_Running:|awk '{print $2}'`
                 exit 2
         fi
 
- else echo "Permitted args: seconds, io_running, sql_running"
+elif [[ $1 == "error" ]]; then
+SQL=`echo "$COM"|grep Last_Error:|awk '{print $2}'`
+
+        if [ -z $SQL ];
+                then echo "Error: No"
+                exit 0
+        else
+                echo "`echo "$SQL"`"
+                exit 2
+        fi
+
+ else echo "Permitted args: seconds, io_running, sql_running, error"
  exit 2
 
 fi
