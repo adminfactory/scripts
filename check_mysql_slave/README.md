@@ -1,10 +1,11 @@
 check_mysql_slave
 =======
-This check is intended for nagios / nrpe. Available arguments are: ``seconds``, ``io_running``, ``sql_running``.  
+This check is intended for nagios / nrpe. Available arguments are: ``seconds``, ``io_running``, ``sql_running``, ``error``.  
 For nrpe, edit ``nrpe.cfg`` and define like so:  
 **command[check_slave_seconds]=/usr/lib/nagios/plugins/check_mysql_slave seconds**  
 **command[check_slave_io]=/usr/lib/nagios/plugins/check_mysql_slave io_running**  
-**command[check_slave_running]=/usr/lib/nagios/plugins/check_mysql_slave sql_running**    
+**command[check_slave_running]=/usr/lib/nagios/plugins/check_mysql_slave sql_running**  
+**command[check_slave_error]=/usr/lib/nagios/plugins/check_mysql_slave error**  
 
 The following variables should be customized:  
 ``$user``  
