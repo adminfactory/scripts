@@ -68,7 +68,7 @@ SQL=`echo "$COM"|grep Last_Error:|awk '{print $2}'`
                 then echo "Error: No"
                 exit 0
         else
-                echo "`echo "$SQL"`"
+                echo "`echo "$COM"|grep Last_Error:`"
                 exit 2
         fi
 
