@@ -1,0 +1,40 @@
+#!/bin/bash
+
+# Alex Florescu, alexf @ adminfactory.net
+# This check is intended for nagios / nrpe. Available arguments are: status [db_name]
+# For nrpe, edit nrpe.cfg and define like so:
+# command[check_table]=/usr/lib/nagios/plugins/check_table status [db_name]
+
+# Customize below
+###
+user=root
+host=127.0.0.1
+port=3306
+pass=`cat /path/to/passfile`
+###
+
+COM=`mysql -u "$user" -h "$host" -P "$port" -p"$pass" -e "select TABLE_COMMENT from information_schema.tables where TABLE_SCHEMA='$2'"`
+
+if [[ $1 == "status" ]]; then
+SEC=`echo "$COM"|grep -v TABLE_COMMENT|sort|sed '/^\s*$/d'`
+COM2=`mysql -u "$user" -h "$host" -P "$port" -p"$pass" -e "select TABLE_NAME,TABLE_COMMENT from information_schema.tables where TABLE_SCHEMA='$2'"`
+        if [[ $SEC == "" ]]; then
+                echo -e "OK \n `echo "$COM2"`"
+                exit 0
+
+        # The following elif order is important!
+        elif [[ $SEC =~ "crashed" ]] || [[ $SEC =~ "Incorrect" ]]; then
+                echo "CRITICAL: `echo "$SEC"`"
+                exit 2
+
+        elif [[ $SEC != "" ]]; then
+                echo "WARNING: `echo "$SEC"`"
+                exit 1
+
+#        else echo "Unknown output: `echo "$SEC"`"
+#                exit 2
+        fi
+ else echo "Permitted args: status [db_name]"
+ exit 2
+
+fi
