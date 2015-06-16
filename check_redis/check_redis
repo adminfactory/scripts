@@ -10,13 +10,13 @@
 ###
 host=127.0.0.1
 port=6379
-pass=`cat /etc/redis/pass`
+pass=$(cat /etc/redis/pass)
 ###
 
-COM=`echo INFO|redis-cli -h "$host" -p "$port" -a "$pass"`
+COM=$(echo INFO|redis-cli -h "$host" -p "$port" -a "$pass")
 
 if [[ $1 == "role" ]]; then
-SEC=`echo "$COM"|grep role|cut -d\: -f 2`
+SEC=$(echo "$COM"|awk -F\: '/role/ {print $2}')
 
         if [ $? -eq 0 ];
                 then echo "Role: $SEC"
@@ -24,7 +24,7 @@ SEC=`echo "$COM"|grep role|cut -d\: -f 2`
         fi
 
 elif [[ $1 == "keys" ]]; then
-IO=`echo info|redis-cli -a \`cat /etc/redis/pass\`|grep db0|grep keys|cut -d\, -f 1|cut -d\= -f 2`
+IO=$(echo "$COM"|awk -F\, '/db0/ {print $1}'|awk -F\= '{print $2}')
 
         if [ $? -eq 0 ];
                 then echo "Keys: $IO"
