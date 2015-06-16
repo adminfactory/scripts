@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Alex Florescu, alexf @ adminfactory.net
-# This check is intended for nagios / nrpe. Available arguments are: role, keys
 # For nrpe, edit nrpe.cfg and define like so:
 # command[check_tcp_conn]=/usr/lib/nagios/plugins/check_tcp_conn
 
