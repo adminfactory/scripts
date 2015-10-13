@@ -24,9 +24,9 @@
 								</span>
 								<br />
 								<TMPL_IF CIMGDAY>
-									<a href="/<TMPL_VAR URL>" class="graphLink i<TMPL_IF STATE_WARNING>warn</TMPL_IF><TMPL_IF STATE_CRITICAL>crit</TMPL_IF>">
+									<a href="../../<TMPL_VAR URL>" class="graphLink i<TMPL_IF STATE_WARNING>warn</TMPL_IF><TMPL_IF STATE_CRITICAL>crit</TMPL_IF>">
 										<TMPL_UNLESS DYN_IMAGES>
-											<img src="<TMPL_VAR CIMGDAY>" alt="<TMPL_VAR ESCAPE="HTML" LABEL>"
+											<img src="../<TMPL_VAR CIMGDAY>" alt="<TMPL_VAR ESCAPE="HTML" LABEL>"
 											  class="graph i<TMPL_IF STATE_WARNING>warn</TMPL_IF><TMPL_IF STATE_CRITICAL>crit</TMPL_IF>"
 											  <TMPL_IF IMGDAYWIDTH>width="<TMPL_VAR IMGDAYWIDTH>" </TMPL_IF>
 											  <TMPL_IF IMGDAYHEIGHT>height="<TMPL_VAR IMGDAYHEIGHT>"</TMPL_IF>/>
