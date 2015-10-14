@@ -26,7 +26,7 @@
 								<TMPL_IF CIMGYEAR>
 									<a href="/<TMPL_VAR URL>" class="graphLink i<TMPL_IF STATE_WARNING>warn</TMPL_IF><TMPL_IF STATE_CRITICAL>crit</TMPL_IF>">
 										<TMPL_UNLESS DYN_IMAGES>
-											<img src="../../<TMPL_VAR CIMGYEAR>" alt="<TMPL_VAR ESCAPE="HTML" LABEL>"
+											<img src="<TMPL_VAR CIMGYEAR>" alt="<TMPL_VAR ESCAPE="HTML" LABEL>"
 											  class="graph i<TMPL_IF STATE_WARNING>warn</TMPL_IF><TMPL_IF STATE_CRITICAL>crit</TMPL_IF>"
 											  <TMPL_IF IMGYEARWIDTH>width="<TMPL_VAR IMGYEARWIDTH>" </TMPL_IF>
 											  <TMPL_IF IMGYEARHEIGHT>height="<TMPL_VAR IMGYEARHEIGHT>"</TMPL_IF>/>
