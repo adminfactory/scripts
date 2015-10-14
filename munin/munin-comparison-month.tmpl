@@ -26,7 +26,7 @@
 								<TMPL_IF CIMGMONTH>
 									<a href="/<TMPL_VAR URL>" class="graphLink i<TMPL_IF STATE_WARNING>warn</TMPL_IF><TMPL_IF STATE_CRITICAL>crit</TMPL_IF>">
 										<TMPL_UNLESS DYN_IMAGES>
-											<img src="<TMPL_VAR CIMGMONTH>" alt="<TMPL_VAR ESCAPE="HTML" LABEL>"
+											<img src="../../<TMPL_VAR CIMGMONTH>" alt="<TMPL_VAR ESCAPE="HTML" LABEL>"
 											  class="graph i<TMPL_IF STATE_WARNING>warn</TMPL_IF><TMPL_IF STATE_CRITICAL>crit</TMPL_IF>"
 											  <TMPL_IF IMGMONTHWIDTH>width="<TMPL_VAR IMGMONTHWIDTH>" </TMPL_IF>
 											  <TMPL_IF IMGMONTHHEIGHT>height="<TMPL_VAR IMGMONTHHEIGHT>"</TMPL_IF>/>
