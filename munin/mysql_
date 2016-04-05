@@ -22,9 +22,16 @@ create your symlinks with names like mysql<N>_<GRAPH> where N is any
 non-negative integer. You must also set the env.cachenamespace variable
 to a unique value for each group of symlinks.
 
+Dependencies:
+apt-get install libcache-cache-perl
+yum install perl-Cache-Cache
+
 To get a list of symlinks that can be created, run:
 
   ./mysql_ suggest
+
+To install:
+for i in $(/usr/share/munin/plugins/mysql_ suggest); do ln -s /usr/share/munin/plugins/mysql_ mysql_$i; done
 
 In addition you might need to specify connection parameters in the
 plugin configuration to override the defaults. These are the defaults:
@@ -35,16 +42,17 @@ plugin configuration to override the defaults. These are the defaults:
 
 Non-default example:
 
-  [mysql_*]
-    env.mysqlconnection DBI:mysql:mysql;host=127.0.0.1;port=3306
-    env.mysqluser root
-    env.mysqlpassword geheim
-    env.cachenamespace munin_mysql_pri
-  [mysql2_*]
-    env.mysqlconnection DBI:mysql:mysql;host=127.0.0.1;port=13306
-    env.mysqluser root
-    env.mysqlpassword ryuWyawEv
-    env.cachenamespace munin_mysql_alt
+[mysql_*]
+env.mysqlconnection DBI:mysql:mysql;host=127.0.0.1;port=3306
+env.mysqluser root
+env.mysqlpassword geheim
+env.cachenamespace munin_mysql_pri
+
+[mysql2_*]
+env.mysqlconnection DBI:mysql:mysql;host=127.0.0.1;port=13306
+env.mysqluser root
+env.mysqlpassword ryuWyawEv
+env.cachenamespace munin_mysql_alt
 
 Warning and critical values can be set via the environment in the usual way.
 For example:
