@@ -1,0 +1,37 @@
+#!/bin/bash
+
+url="$1"
+export AWS_DEFAULT_REGION="us-east-1"
+export AWS_ACCESS_KEY_ID=$(cat /etc/ssl/sqskey)
+export AWS_SECRET_ACCESS_KEY=$(cat /etc/ssl/sqssecret)
+
+getqueue(){
+aws sqs get-queue-attributes --queue-url "$url" --attribute-names ApproximateNumberOfMessages|awk -F\" '/ApproximateNumberOfMessages/ {print $4}'
+}
+
+FIRST=$(getqueue)
+sleep 10
+SECOND=$(getqueue)
+
+if [[ $FIRST -eq 0 ]]; then
+        echo "OK: no messages in queue"
+        exit 0
+fi
+
+if [[ $SECOND -eq 0 ]]; then
+        echo "OK: no messages in queue"
+        exit 0
+
+elif [[ $SECOND -gt 100 && $SECOND -ge $FIRST ]]; then
+        echo "WARNING: $(getqueue) messages in queue"
+        exit 1
+
+elif [[ $SECOND -lt $FIRST ]]; then
+        echo "OK: $(getqueue) messages in queue"
+        exit 0
+
+
+elif [[ -z $SECOND ]]; then
+        echo "CRITICAL: cannot read value"
+        exit 2
+fi
