@@ -24,7 +24,7 @@ SERVICEPERFDATA=""
 
 PROGNAME=$(basename $0)
 
-vgs_bin=`/usr/bin/whereis -b -B /sbin /bin /usr/bin /usr/sbin -f vgs | awk '{ print $2 }'`
+vgs_bin="sudo /usr/sbin/vgs"
 _vgs="$vgs_bin --units=g"
 
 bc_bin=`/usr/bin/whereis -b -B /sbin /bin /usr/bin /usr/sbin -f bc | awk '{ print $2 }'`
