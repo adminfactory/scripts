@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Alex Florescu, alexf @ adminfactory.net
+
+#pass?
+#OPTS="-p"
+COM=$(mysql $OPTS -NBe "show global status like 'Threads_connected'" 2>&1|awk  '/Threads_connected/ {print $2}')
+
+        if [ $COM -le 40 ];
+                then echo "OK - Current mysql conns: $(echo $COM)"
+                exit 0
+
+        # The following elif order is important!
+        elif [[ $COM -ge 90 ]];
+                then echo "CRITICAL - Current mysql conns: $(echo $COM)"
+                exit 2
+
+        elif [ $COM -gt 40 ];
+                then echo "WARNING - Current mysql conns: $(echo $COM)"
+                exit 1
+
+        else echo "Unknown output: $(echo "$COM")"
+                exit 2
+    fi
