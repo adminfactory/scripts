@@ -1,0 +1,12 @@
+#!/bin/bash
+
+
+SEC=$(touch /tmp/touch > /dev/null 2>&1)
+
+        if [[ $? -ne 0 ]];
+                then echo "Unable to touch file, FS might be read only"
+                exit 2
+        else
+                echo "OK"
+                exit 0
+        fi
