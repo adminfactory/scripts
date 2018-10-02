@@ -1,0 +1,271 @@
+#!/bin/bash
+#
+# Nagios plugin to check Postgresql streamin replication state
+# 
+# Could be use on Master or on standby node
+#
+# Requirement : 
+#
+#     On master node : Slaves must be able to connect with user from recovery.conf
+#                      to database with the same name (or another specify with -D)
+#                      as trust (or via md5 using password specify in ~/.pgpass).
+#
+#     On standby node : PG_USER must be able to connect localy on the database
+#                       with the same name (or another specify with -D) as trust
+#                       (or via md5 using password specify in ~/.pgpass).
+#
+# Author : Benjamin Renard <brenard@easter-eggs.com>
+# Date : Fri, 25 Aug 2017 15:57:57 +0200
+# Source : http://git.zionetrix.net/check_pg_streaming_replication
+#
+
+PG_USER=postgres
+PG_MASTER_USER=""
+PSQL_BIN=/usr/bin/psql
+PG_MAIN=/var/lib/postgresql/9.1/main
+if [ -f /etc/debian_version ]
+then
+	AUTO_PG_MAIN=$( ls -1d /var/lib/postgresql/9*/main 2> /dev/null|sort -n|tail -n 1 )
+	[ -n "$AUTO_PG_MAIN" -a -d "$AUTO_PG_MAIN" ] && PG_MAIN=$AUTO_PG_MAIN
+elif [ -f /etc/redhat-release ]
+then
+	AUTO_PG_MAIN=$( ls -1d /var/lib/pgsql/9*/data 2> /dev/null|sort -n|tail -n 1 )
+	[ -n "$AUTO_PG_MAIN" -a -d "$AUTO_PG_MAIN" ] && PG_MAIN=$AUTO_PG_MAIN
+fi
+RECOVERY_CONF_FILENAME=recovery.conf
+RECOVERY_CONF=""
+PG_DEFAULT_PORT=5432
+PG_DB=""
+
+DEBUG=0
+
+function usage () {
+	cat << EOF
+Usage : $0 [-d] [-h] [options]
+	-u pg_user		Specify Postgres user (Default : $PG_USER)
+	-b psql_bin		Specify psql binary path (Default : $PSQL_BIN)
+	-m pg_main		Specify Postgres main directory path
+				(By default, try to auto-detect it, on your system it :
+                                $PG_MAIN)
+	-r recovery_conf	Specify Postgres recovery configuration file path
+				(Default : [PG_MAIN]/$RECOVERY_CONF_FILENAME)
+	-U pg_master_user	Specify Postgres user to use on master (Default : user from recovery.conf file)
+	-p pg_port		Specify default Postgres master TCP port (Default : $PG_DEFAULT_PORT)
+	-D dbname		Specify DB name on Postgres master/slave to connect on (Default : PG_USER)
+	-d			Debug mode
+	-h 			Show this message
+EOF
+	exit 0
+}
+
+while getopts "hu:b:m:r:U:p:D:d" OPTION
+do
+	case $OPTION in
+		u)
+			PG_USER=$OPTARG
+		;;
+		b)
+			PSQL_BIN=$OPTARG
+		;;
+		m)
+			PG_MAIN=$OPTARG
+		;;
+		r)
+			RECOVERY_CONF=$OPTARG
+		;;
+		U)
+			PG_MASTER_USER=$OPTARG
+		;;
+		p)
+			PG_DEFAULT_PORT=$OPTARG
+		;;
+		D)
+			PG_DB=$OPTARG
+		;;
+		d)
+			DEBUG=1
+		;;
+		h)
+			usage
+		;;
+		\?)
+			echo -n "Unkown option"
+			usage
+	esac
+done
+
+# Check PG_USER
+[ -z "$PG_USER" ] && echo "UNKNOWN : Postgres user not specify" && exit 3
+id "$PG_USER" > /dev/null 2>&1
+[ $? -ne 0 ] && echo "UNKNOWN : Invalid Postgres user ($PG_USER)" && exit 3
+
+# Check PSQL_BIN
+[ ! -x "$PSQL_BIN" ] && echo "UNKNOWN : Invalid psql bin path ($PSQL_BIN)" && exit 3
+
+# Check PG_MAIN
+[ ! -d "$PG_MAIN/" ] && echo "UNKNOWN : Invalid Postgres main directory path ($PG_MAIN)" && exit 3
+
+# Check RECOVERY_CONF
+[ -z "$RECOVERY_CONF" ] && RECOVERY_CONF="$PG_MAIN/$RECOVERY_CONF_FILENAME"
+
+# Check PG_DEFAULT_PORT
+[ $( echo "$PG_DEFAULT_PORT"|grep -c -E '^[0-9]*$' ) -ne 1 ] && "UNKNOWN : Postgres default master TCP port must be an integer." && exit 3
+
+# If PG_DB is not provided with -D parameter, use PG_USER as default value
+[ -z "$PB_DB" ] && PG_DB="$PG_USER"
+
+function psql_get () {
+	echo "$1"|su - $PG_USER -c "$PSQL_BIN -d "$PG_DB" -t -P format=unaligned"
+}
+
+function debug() {
+	if [ $DEBUG -eq 1 ]
+	then
+		echo "[DEBUG] $1"
+	fi
+}
+
+debug "Running options :
+PG_USER = $PG_USER
+PSQL_BIN = $PSQL_BIN
+PG_MAIN = $PG_MAIN
+RECOVERY_CONF = $RECOVERY_CONF
+PG_DEFAULT_PORT = $PG_DEFAULT_PORT"
+
+# Postgres is running ?
+if [ $DEBUG -eq 0 ]
+then
+	psql_get '\q' 2> /dev/null
+else
+	psql_get '\q'
+fi
+if [ $? -ne 0 ]
+then
+	echo "CRITICAL : Postgres is not running !"
+	exit 2
+fi
+debug "Postgres is running"
+
+RECOVERY_MODE=0
+[ $( psql_get 'SELECT pg_is_in_recovery();' ) == "t" ] && RECOVERY_MODE=1
+
+if [ -f $RECOVERY_CONF ]
+then
+	debug "File recovery.conf found. Hot-standby mode."
+	
+	# Check recovery mode
+	if [ $RECOVERY_MODE -ne 1 ]
+	then
+		echo "CRITICAL : Not in recovery mode while recovery.conf file found !"
+		exit 2
+	fi
+	debug "Postgres is in recovery mode"
+
+	LAST_XLOG_RECEIVE=$( psql_get "SELECT pg_last_xlog_receive_location()" )
+	debug "Last xlog file receive : $LAST_XLOG_RECEIVE"
+	LAST_XLOG_REPLAY=$( psql_get "SELECT pg_last_xlog_replay_location()" )
+	debug "Last xlog file replay : $LAST_XLOG_REPLAY"
+
+
+	# Get master connection informations from recovery.conf file
+	MASTER_CONN_INFOS=$( egrep '^ *primary_conninfo' $RECOVERY_CONF|sed "s/^ *primary_conninfo *= *[\"\']\([^\"\']*\)[\"\'].*$/\1/" )
+	if [ ! -n "$MASTER_CONN_INFOS" ]
+	then
+		echo "UNKNOWN : Can't retreive master connection informations form recovery.conf file"
+		exit 3
+	fi
+	debug "Master connection informations : $MASTER_CONN_INFOS"
+
+	M_HOST=$( echo "$MASTER_CONN_INFOS"|sed 's/^.*host= *\([^ ]*\) *.*$/\1/' )
+	if [ ! -n "$M_HOST" ]
+	then
+		echo "UNKNOWN : Can't retreive master host from recovery.conf file"
+		exit 3
+	fi
+	debug "Master host : $M_HOST"
+
+	M_PORT=$( echo "$MASTER_CONN_INFOS"|sed 's/^.*port= *\([^ ]*\) *.*$/\1/' )
+	if [ ! -n "$M_PORT" ]
+	then
+		debug "Master port not specify, use default : $PG_DEFAULT_PORT"
+		M_PORT=$PG_DEFAULT_PORT
+	else
+		debug "Master port : $M_PORT"
+	fi
+
+	if [ -n "$PG_MASTER_USER" ]
+	then
+		debug "Master user provided by command-line, use it : $PG_MASTER_USER"
+		M_USER="$PG_MASTER_USER"
+	else
+		M_USER=$( echo "$MASTER_CONN_INFOS"|sed 's/^.*user= *\([^ ]*\) *.*$/\1/' )
+		if [ ! -n "$M_USER" ]
+		then
+			debug "Master user not specify, use default : $PG_USER"
+			M_USER=$PG_USER
+		else
+			debug "Master user : $M_USER"
+		fi
+	fi
+	
+	# Get current xlog file from master
+	M_CUR_XLOG="$( echo 'SELECT pg_current_xlog_location()'|su - $PG_USER -c "$PSQL_BIN -U $M_USER -h $M_HOST -p $M_PORT -d $PG_DB -t -P format=unaligned" )"
+	if [ ! -n "$M_CUR_XLOG" ]
+	then
+		echo "UNKNOWN : Can't retreive current xlog from master server"
+		exit 3
+	fi
+	debug "Master current xlog : $M_CUR_XLOG"
+
+	# Master current xlog is the last receive xlog ?
+	if [ "$M_CUR_XLOG" != "$LAST_XLOG_RECEIVE" ]
+	then
+		echo "CRITICAL : Master current xlog is not the last receive xlog"
+		exit 2
+	fi
+	debug "Master current xlog is the last receive xlog"
+
+	# The last receive xlog is the last replay file ?
+	if [ "$LAST_XLOG_RECEIVE" != "$LAST_XLOG_REPLAY" ]
+	then
+		echo "WARNING : last receive xlog file is not the last replay file"
+		exit 1
+	fi
+	debug "Last receive xlog file is the last replay file"
+
+	echo "OK : Hot-standby server is uptodate"
+	exit 0
+else
+	debug "File recovery.conf not found. Master mode."
+
+	# Check recovery mode
+	if [ $RECOVERY_MODE -eq 1 ]
+	then
+		echo "CRITICAL : In recovery mode while recovery.conf file not found !"
+		exit 2
+	fi
+	debug "Postgres is not in recovery mode"
+
+	# Check standby client
+	STANDBY_CLIENTS=$( psql_get "SELECT client_addr, sync_state FROM pg_stat_replication;" )
+	if [ ! -n "$STANDBY_CLIENTS" ]
+	then
+		echo "WARNING : no stand-by client connected"
+		exit 1
+	fi
+	debug "Stand-by client(s) : $( echo  -n $STANDBY_CLIENTS|sed 's/\n/ , /g' )"
+
+	STANDBY_CLIENTS_TXT=""
+	STANDBY_CLIENTS_COUNT=0
+	for line in $STANDBY_CLIENTS
+	do
+		let STANDBY_CLIENTS_COUNT=STANDBY_CLIENTS_COUNT+1
+
+		IP=$( echo $line|cut -d '|' -f 1 )
+		MODE=$( echo $line|cut -d '|' -f 2 )
+		STANDBY_CLIENTS_TXT="$STANDBY_CLIENTS_TXT $IP (mode=$MODE)"
+	done
+
+	echo "OK : $STANDBY_CLIENTS_COUNT stand-by client(s) connected - $STANDBY_CLIENTS_TXT"
+	exit 0
+fi
